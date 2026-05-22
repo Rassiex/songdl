@@ -14,6 +14,22 @@ PLAYLIST_DIR = os.path.join(CONFIG_DIR, "playlists")
 ensure_dir(PLAYLIST_DIR)
 
 
+def pick_folder():
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        folder = filedialog.askdirectory(title="Choose download folder")
+        root.destroy()
+        if folder:
+            return folder
+    except Exception:
+        pass
+    return input("  Output folder path: ").strip()
+
+
 def clear():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -36,7 +52,9 @@ def single_download_mode():
         input("  Press Enter to continue...")
         return
     print(f"  Downloading: {result['title']}")
-    out = input("  Output directory (Enter for ./downloads): ").strip() or "./downloads"
+    out = pick_folder()
+    if not out:
+        out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
     out = ensure_dir(out)
     dl = download_audio(result["url"], out)
     if dl["success"]:
@@ -56,7 +74,9 @@ def batch_download_mode():
         songs.append(line)
     if not songs:
         return
-    out = input("  Output directory (Enter for ./downloads): ").strip() or "./downloads"
+    out = pick_folder()
+    if not out:
+        out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
     out = ensure_dir(out)
     auto = input("  Auto-pick first result? (y/N): ").strip().lower() == "y"
     downloaded = 0
@@ -223,8 +243,9 @@ def download_playlist_mode():
         idx = int(pick) - 1
         if 0 <= idx < len(plists):
             pl = load_playlist(os.path.join(PLAYLIST_DIR, plists[idx]))
-            out = input(f"  Output directory (Enter for ./downloads/{sanitize_name(pl['name'])}): ").strip()
-            out = out or os.path.join("downloads", sanitize_name(pl["name"]))
+            out = pick_folder()
+            if not out:
+                out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads", sanitize_name(pl["name"]))
             out = ensure_dir(out)
             downloaded = 0
             failed = 0
@@ -281,7 +302,9 @@ def search_browse_mode():
                     print(f"  Playlist saved with {len(results)} songs!")
                     dl_now = input("  Download now? (y/N): ").strip().lower() == "y"
                     if dl_now:
-                        out = input("  Output directory (Enter for ./downloads): ").strip() or "./downloads"
+                        out = pick_folder()
+                        if not out:
+                            out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
                         out = ensure_dir(out)
                         for r in results:
                             print(f"\n  Downloading: {r['title']}")
@@ -293,7 +316,9 @@ def search_browse_mode():
             try:
                 idx = int(cmd) - 1
                 if 0 <= idx < len(results):
-                    out = input("  Output directory (Enter for ./downloads): ").strip() or "./downloads"
+                    out = pick_folder()
+                    if not out:
+                        out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
                     out = ensure_dir(out)
                     dl = download_audio(results[idx]["url"], out)
                     if dl["success"]:
