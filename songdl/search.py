@@ -1,4 +1,4 @@
-import youtube_dl
+import yt_dlp
 
 
 def search_youtube(query, max_results=5):
@@ -10,7 +10,7 @@ def search_youtube(query, max_results=5):
     }
     search_query = f"ytsearch{max_results}:{query}"
     results = []
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
             info = ydl.extract_info(search_query, download=False)
             if info and "entries" in info:

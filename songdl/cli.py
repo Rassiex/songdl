@@ -306,14 +306,14 @@ def search_browse_mode():
 
 
 def main():
-    print("Checking for ffmpeg...")
     import shutil
     has_ffmpeg = shutil.which("ffmpeg") is not None
-    if has_ffmpeg:
-        print("  ffmpeg found - MP3 conversion enabled")
+    if not has_ffmpeg:
+        print("  WARNING: ffmpeg not found - downloading native audio (m4a/opus)")
+        print("  Get ffmpeg from https://ffmpeg.org for MP3 support")
+        print()
     else:
-        print("  ffmpeg not found - will download native audio (m4a/opus)")
-        print("  Install ffmpeg from https://ffmpeg.org for MP3 support")
+        print("  ffmpeg OK - MP3 conversion enabled")
     print()
     input("  Press Enter to continue...")
 

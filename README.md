@@ -75,5 +75,5 @@ python -m songdl
 ## Requirements
 
 - Python 3.6+
-- [youtube-dl](https://github.com/ytdl-org/youtube-dl)
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) (active fork of youtube-dl)
 - [ffmpeg](https://ffmpeg.org/) (optional – for MP3 conversion; without it, downloads use native m4a/opus)
