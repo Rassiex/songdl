@@ -1,8 +1,15 @@
 import os
 import time
+import shutil
 import yt_dlp
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+
+_FFMPEG_LOCATION = shutil.which("ffmpeg")
+if not _FFMPEG_LOCATION:
+    local_path = os.path.join(os.environ.get("LOCALAPPDATA", ""), "ffmpeg", "bin", "ffmpeg.exe")
+    if os.path.isfile(local_path):
+        _FFMPEG_LOCATION = os.path.dirname(local_path)
 
 
 def _make_opts(output_dir, **extra):
@@ -14,6 +21,8 @@ def _make_opts(output_dir, **extra):
         "noplaylist": True,
         "user_agent": UA,
     }
+    if _FFMPEG_LOCATION:
+        opts["ffmpeg_location"] = _FFMPEG_LOCATION
     opts.update(extra)
     return opts
 
