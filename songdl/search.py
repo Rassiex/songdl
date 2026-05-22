@@ -113,6 +113,9 @@ def search_one(query, max_duration=300):
 
 
 def fetch_playlist(url, max_duration=300):
+    is_search = not url.startswith("http://") and not url.startswith("https://")
+    if is_search:
+        url = f"ytsearch20:{url}"
     ydl_opts = {
         "quiet": True,
         "no_warnings": True,
@@ -120,12 +123,12 @@ def fetch_playlist(url, max_duration=300):
         "force_generic_extractor": False,
     }
     entries = []
-    pl_title = "Playlist"
+    pl_title = "YouTube Mix" if is_search else "Playlist"
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
             info = ydl.extract_info(url, download=False)
             if info:
-                pl_title = info.get("title", "Playlist")
+                pl_title = info.get("title", pl_title)
             if info and "entries" in info:
                 for e in info["entries"]:
                     if e:

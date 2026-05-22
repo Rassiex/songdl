@@ -3,6 +3,12 @@ import sys
 import json
 from datetime import datetime
 
+if sys.stdout.encoding != "utf-8":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 from . import __version__
 from .search import search_one, search_youtube, fetch_playlist
 from .downloader import download_audio
@@ -279,22 +285,25 @@ def download_playlist_mode():
 
 
 def playlist_download_mode():
-    url = input("  YouTube playlist URL: ").strip()
+    print("  Paste a YouTube playlist URL, Mix/Radio link,")
+    print("  or type a search query to generate a mix.")
+    url = input("  > ").strip()
     if not url:
         return
-    print("  Fetching playlist (skipping tracks over 5 min)...")
+    print("  Fetching (skipping tracks over 5 min)...")
     entries, pl_title = fetch_playlist(url, MAX_DURATION)
     if not entries:
-        print("  No videos under 5 min found in playlist.")
+        print("  No videos under 5 min found.")
         input("  Press Enter...")
         return
     skipped = 0
-    if entries:
-        from .search import search_youtube
-        # refetch without filter to count skipped
+    all_entries = []
+    try:
         all_entries, _ = fetch_playlist(url, max_duration=None)
-        skipped = len(all_entries) - len(entries)
-    print(f"  Found {len(entries)} videos under 5 min in: {pl_title}{f' ({skipped} skipped)' if skipped else ''}")
+        skipped = max(0, len(all_entries) - len(entries))
+    except Exception:
+        pass
+    print(f"  Found {len(entries)} videos under 5 min: {pl_title}{f' ({skipped} skipped)' if skipped else ''}")
     out = pick_folder()
     if not out:
         out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads", sanitize_name(pl_title))
@@ -400,7 +409,7 @@ def main():
         print("  [2] Batch download (paste list)")
         print("  [3] Browse & search YouTube")
         print("  [4] Playlist manager")
-        print("  [5] YouTube playlist URL downloader")
+        print("  [5] Playlist / Mix / Search generator")
         print("  [Q] Quit")
         print()
         choice = input("  Choose: ").strip().lower()
