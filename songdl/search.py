@@ -51,3 +51,30 @@ def search_one(query):
         except (ValueError, IndexError):
             pass
         print(f"  Invalid choice. Enter 1-{len(results)}.")
+
+
+def fetch_playlist(url):
+    import yt_dlp
+    ydl_opts = {
+        "quiet": True,
+        "no_warnings": True,
+        "extract_flat": True,
+        "force_generic_extractor": False,
+    }
+    entries = []
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        try:
+            info = ydl.extract_info(url, download=False)
+            if info and "entries" in info:
+                for e in info["entries"]:
+                    if e:
+                        entries.append({
+                            "id": e.get("id"),
+                            "title": e.get("title", "Unknown"),
+                            "url": f"https://youtube.com/watch?v={e.get('id')}",
+                            "duration": e.get("duration"),
+                            "uploader": e.get("uploader", info.get("uploader", "")),
+                        })
+        except Exception as e:
+            print(f"  Playlist fetch error: {e}")
+    return entries, info.get("title", "Playlist") if info else ("Playlist",)

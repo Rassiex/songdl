@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 from . import __version__
-from .search import search_one, search_youtube
+from .search import search_one, search_youtube, fetch_playlist
 from .downloader import download_audio
 from .playlist import create_playlist, add_song, remove_song, save_playlist, load_playlist, list_playlists
 from .utils import ensure_dir, format_duration, format_size
@@ -275,6 +275,35 @@ def download_playlist_mode():
     input("  Press Enter...")
 
 
+def playlist_download_mode():
+    url = input("  YouTube playlist URL: ").strip()
+    if not url:
+        return
+    print("  Fetching playlist...")
+    entries, pl_title = fetch_playlist(url)
+    if not entries:
+        print("  No videos found in playlist.")
+        input("  Press Enter...")
+        return
+    print(f"  Found {len(entries)} videos in: {pl_title}")
+    out = pick_folder()
+    if not out:
+        out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads", sanitize_name(pl_title))
+    out = ensure_dir(out)
+    downloaded = 0
+    failed = 0
+    for i, entry in enumerate(entries, 1):
+        print(f"\n  [{i}/{len(entries)}] {entry['title']}")
+        dl = download_audio(entry["url"], out)
+        show_dl_result(dl)
+        if dl["success"]:
+            downloaded += 1
+        else:
+            failed += 1
+    print(f"\n  Playlist done: {downloaded} downloaded, {failed} failed.")
+    input("  Press Enter...")
+
+
 def sanitize_name(name):
     import re
     return re.sub(r'[<>:"/\\|?*]', "_", name)
@@ -355,6 +384,7 @@ def main():
         print("  [2] Batch download (paste list)")
         print("  [3] Browse & search YouTube")
         print("  [4] Playlist manager")
+        print("  [5] YouTube playlist URL downloader")
         print("  [Q] Quit")
         print()
         choice = input("  Choose: ").strip().lower()
@@ -366,6 +396,8 @@ def main():
             search_browse_mode()
         elif choice == "4":
             playlist_mode()
+        elif choice == "5":
+            playlist_download_mode()
         elif choice == "q":
             print("  Bye!")
             break
