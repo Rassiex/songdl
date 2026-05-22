@@ -4,7 +4,7 @@ import shutil
 import re
 import yt_dlp
 
-from .metadata import extract_artist_title, detect_bpm_key
+from .metadata import extract_artist_title, detect_bpm_key, camelot_key
 
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 
@@ -19,6 +19,41 @@ def _sanitize(name):
     return re.sub(r'[<>:"/\\|?*]', "_", name)
 
 
+def _write_metadata(filepath, artist, song_title, key, bpm):
+    try:
+        from mutagen.mp3 import MP3
+        from mutagen.id3 import ID3, TPE1, TIT2, TKEY, TBPM, TCON, TALB
+
+        if filepath.endswith(".mp3"):
+            try:
+                audio = MP3(filepath, ID3=ID3)
+            except Exception:
+                audio = MP3(filepath)
+                audio.add_tags()
+            audio["TPE1"] = TPE1(encoding=3, text=artist)
+            audio["TIT2"] = TIT2(encoding=3, text=song_title)
+            if key:
+                audio["TKEY"] = TKEY(encoding=3, text=key)
+                ck = camelot_key(key)
+                if ck:
+                    audio["TCON"] = TCON(encoding=3, text=ck)
+            if bpm:
+                audio["TBPM"] = TBPM(encoding=3, text=str(bpm))
+            audio.save()
+        elif filepath.endswith(".m4a"):
+            from mutagen.mp4 import MP4, MP4Cover
+            audio = MP4(filepath)
+            audio["\xa9ART"] = artist
+            audio["\xa9nam"] = song_title
+            if key:
+                audio["\xa9key"] = key
+            if bpm:
+                audio["tmpo"] = [bpm]
+            audio.save()
+    except Exception:
+        pass
+
+
 def _make_opts(output_dir, **extra):
     opts = {
         "format": "bestaudio/best",
@@ -27,6 +62,7 @@ def _make_opts(output_dir, **extra):
         "no_warnings": True,
         "noplaylist": True,
         "user_agent": UA,
+        "writethumbnail": False,
     }
     if _FFMPEG_LOCATION:
         opts["ffmpeg_location"] = _FFMPEG_LOCATION
@@ -77,7 +113,6 @@ def download_audio(url, output_dir, format="mp3", quality="192", analyze=True):
     video_id = info.get("id", "")
     artist, song_title = extract_artist_title(info)
 
-    # Find downloaded file
     filepath = _find_file(output_dir, video_id, format) or _find_file(output_dir, video_id, "m4a")
     if not filepath:
         for f in os.listdir(output_dir):
@@ -89,16 +124,7 @@ def download_audio(url, output_dir, format="mp3", quality="192", analyze=True):
         print(f"  Analyzing: {artist} - {song_title}")
         bpm, key = detect_bpm_key(filepath)
 
-    # Build new filename
-    tag = ""
-    if key and bpm:
-        tag = f" ({key} - {bpm}BPM)"
-    elif key:
-        tag = f" ({key})"
-    elif bpm:
-        tag = f" ({bpm}BPM)"
-
-    new_name = _sanitize(f"{artist} - {song_title}{tag}.{format}")
+    new_name = _sanitize(f"{artist} - {song_title}.{format}")
     new_path = os.path.join(output_dir, new_name)
 
     if filepath and os.path.isfile(filepath):
@@ -109,6 +135,8 @@ def download_audio(url, output_dir, format="mp3", quality="192", analyze=True):
         except Exception:
             new_path = filepath
             new_name = os.path.basename(filepath)
+
+    _write_metadata(new_path, artist, song_title, key, bpm)
 
     return {
         "success": True,
@@ -146,15 +174,7 @@ def download_audio_native(url, output_dir, analyze=True):
         print(f"  Analyzing: {artist} - {song_title}")
         bpm, key = detect_bpm_key(filepath)
 
-    tag = ""
-    if key and bpm:
-        tag = f" ({key} - {bpm}BPM)"
-    elif key:
-        tag = f" ({key})"
-    elif bpm:
-        tag = f" ({bpm}BPM)"
-
-    new_name = _sanitize(f"{artist} - {song_title}{tag}.{ext}")
+    new_name = _sanitize(f"{artist} - {song_title}.{ext}")
     new_path = os.path.join(output_dir, new_name)
 
     if filepath and os.path.isfile(filepath):
@@ -165,6 +185,8 @@ def download_audio_native(url, output_dir, analyze=True):
         except Exception:
             new_path = filepath
             new_name = os.path.basename(filepath)
+
+    _write_metadata(new_path, artist, song_title, key, bpm)
 
     return {
         "success": True,
