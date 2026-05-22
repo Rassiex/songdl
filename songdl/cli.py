@@ -42,6 +42,22 @@ def print_header():
     print()
 
 
+def show_dl_result(dl):
+    if dl["success"]:
+        parts = [f"  Done: {dl['title']}"]
+        if dl.get("bpm") and dl.get("key"):
+            parts.append(f"  {dl['key']} | {dl['bpm']} BPM")
+        elif dl.get("bpm"):
+            parts.append(f"  {dl['bpm']} BPM")
+        elif dl.get("key"):
+            parts.append(f"  Key: {dl['key']}")
+        if dl.get("filename"):
+            parts.append(f"  File: {dl['filename']}")
+        print("\n".join(parts))
+    else:
+        print(f"  Failed: {dl.get('error', 'Unknown error')}")
+
+
 def single_download_mode():
     query = input("  Song title: ").strip()
     if not query:
@@ -57,10 +73,7 @@ def single_download_mode():
         out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
     out = ensure_dir(out)
     dl = download_audio(result["url"], out)
-    if dl["success"]:
-        print(f"  Done: {dl['title']}")
-    else:
-        print(f"  Failed: {dl.get('error', 'Unknown error')}")
+    show_dl_result(dl)
     input("  Press Enter to continue...")
 
 
@@ -97,11 +110,10 @@ def batch_download_mode():
                 failed += 1
                 continue
         dl = download_audio(result["url"], out)
+        show_dl_result(dl)
         if dl["success"]:
-            print(f"  Done: {dl['title']}")
             downloaded += 1
         else:
-            print(f"  Failed: {dl.get('error', 'Unknown error')}")
             failed += 1
     print(f"\n  Done: {downloaded} downloaded, {failed} failed.")
     input("  Press Enter to continue...")
@@ -252,11 +264,10 @@ def download_playlist_mode():
             for i, s in enumerate(pl["songs"], 1):
                 print(f"\n  [{i}/{len(pl['songs'])}] {s['title']}")
                 dl = download_audio(s["url"], out)
+                show_dl_result(dl)
                 if dl["success"]:
-                    print(f"  Done: {dl['title']}")
                     downloaded += 1
                 else:
-                    print(f"  Failed: {dl.get('error', 'Unknown error')}")
                     failed += 1
             print(f"\n  Done: {downloaded} downloaded, {failed} failed.")
     except (ValueError, IndexError):
@@ -307,10 +318,8 @@ def search_browse_mode():
                             out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
                         out = ensure_dir(out)
                         for r in results:
-                            print(f"\n  Downloading: {r['title']}")
                             dl = download_audio(r["url"], out)
-                            if dl["success"]:
-                                print(f"  Done")
+                            show_dl_result(dl)
                 input("  Press Enter...")
                 break
             try:
@@ -321,10 +330,7 @@ def search_browse_mode():
                         out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
                     out = ensure_dir(out)
                     dl = download_audio(results[idx]["url"], out)
-                    if dl["success"]:
-                        print(f"  Done: {dl['title']}")
-                    else:
-                        print(f"  Failed: {dl.get('error', 'Unknown error')}")
+                    show_dl_result(dl)
                     input("  Press Enter...")
             except ValueError:
                 pass
@@ -339,6 +345,7 @@ def main():
         print()
     else:
         print("  ffmpeg OK - MP3 conversion enabled")
+    print("  Auto-detecting Key & BPM after download (librosa)")
     print()
     input("  Press Enter to continue...")
 
