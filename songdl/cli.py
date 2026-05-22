@@ -13,6 +13,9 @@ CONFIG_DIR = os.path.join(os.path.expanduser("~"), ".songdl")
 PLAYLIST_DIR = os.path.join(CONFIG_DIR, "playlists")
 ensure_dir(PLAYLIST_DIR)
 
+ANALYZE = True
+MAX_DURATION = 300
+
 
 def pick_folder():
     try:
@@ -62,7 +65,7 @@ def single_download_mode():
     query = input("  Song title: ").strip()
     if not query:
         return
-    result = search_one(query)
+    result = search_one(query, MAX_DURATION)
     if not result:
         print("  No results found.")
         input("  Press Enter to continue...")
@@ -72,7 +75,7 @@ def single_download_mode():
     if not out:
         out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
     out = ensure_dir(out)
-    dl = download_audio(result["url"], out)
+    dl = download_audio(result["url"], out, analyze=ANALYZE)
     show_dl_result(dl)
     input("  Press Enter to continue...")
 
@@ -97,19 +100,19 @@ def batch_download_mode():
     for i, song in enumerate(songs, 1):
         print(f"\n  [{i}/{len(songs)}] {song}")
         if auto:
-            results = search_youtube(song, max_results=1)
+            results = search_youtube(song, max_results=1, max_duration=MAX_DURATION)
             if not results:
-                print("  No results.")
+                print("  No results under 5 min.")
                 failed += 1
                 continue
             result = results[0]
         else:
-            result = search_one(song)
+            result = search_one(song, MAX_DURATION)
             if not result:
                 print("  Skipped.")
                 failed += 1
                 continue
-        dl = download_audio(result["url"], out)
+        dl = download_audio(result["url"], out, analyze=ANALYZE)
         show_dl_result(dl)
         if dl["success"]:
             downloaded += 1
@@ -263,7 +266,7 @@ def download_playlist_mode():
             failed = 0
             for i, s in enumerate(pl["songs"], 1):
                 print(f"\n  [{i}/{len(pl['songs'])}] {s['title']}")
-                dl = download_audio(s["url"], out)
+                dl = download_audio(s["url"], out, analyze=ANALYZE)
                 show_dl_result(dl)
                 if dl["success"]:
                     downloaded += 1
@@ -279,13 +282,19 @@ def playlist_download_mode():
     url = input("  YouTube playlist URL: ").strip()
     if not url:
         return
-    print("  Fetching playlist...")
-    entries, pl_title = fetch_playlist(url)
+    print("  Fetching playlist (skipping tracks over 5 min)...")
+    entries, pl_title = fetch_playlist(url, MAX_DURATION)
     if not entries:
-        print("  No videos found in playlist.")
+        print("  No videos under 5 min found in playlist.")
         input("  Press Enter...")
         return
-    print(f"  Found {len(entries)} videos in: {pl_title}")
+    skipped = 0
+    if entries:
+        from .search import search_youtube
+        # refetch without filter to count skipped
+        all_entries, _ = fetch_playlist(url, max_duration=None)
+        skipped = len(all_entries) - len(entries)
+    print(f"  Found {len(entries)} videos under 5 min in: {pl_title}{f' ({skipped} skipped)' if skipped else ''}")
     out = pick_folder()
     if not out:
         out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads", sanitize_name(pl_title))
@@ -294,7 +303,7 @@ def playlist_download_mode():
     failed = 0
     for i, entry in enumerate(entries, 1):
         print(f"\n  [{i}/{len(entries)}] {entry['title']}")
-        dl = download_audio(entry["url"], out)
+        dl = download_audio(entry["url"], out, analyze=ANALYZE)
         show_dl_result(dl)
         if dl["success"]:
             downloaded += 1
@@ -347,7 +356,7 @@ def search_browse_mode():
                             out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
                         out = ensure_dir(out)
                         for r in results:
-                            dl = download_audio(r["url"], out)
+                            dl = download_audio(r["url"], out, analyze=ANALYZE)
                             show_dl_result(dl)
                 input("  Press Enter...")
                 break
@@ -358,7 +367,7 @@ def search_browse_mode():
                     if not out:
                         out = os.path.join(os.path.expanduser("~"), "Desktop", "SongDL Downloads")
                     out = ensure_dir(out)
-                    dl = download_audio(results[idx]["url"], out)
+                    dl = download_audio(results[idx]["url"], out, analyze=ANALYZE)
                     show_dl_result(dl)
                     input("  Press Enter...")
             except ValueError:
@@ -366,6 +375,7 @@ def search_browse_mode():
 
 
 def main():
+    global ANALYZE
     import shutil
     has_ffmpeg = shutil.which("ffmpeg") is not None
     if not has_ffmpeg:
@@ -374,7 +384,13 @@ def main():
         print()
     else:
         print("  ffmpeg OK - MP3 conversion enabled")
-    print("  Auto-detecting Key & BPM after download (librosa)")
+    print(f"  Songs over {MAX_DURATION // 60} min will be skipped")
+    analyze_in = input("  Detect Key & BPM? (Y/n): ").strip().lower()
+    ANALYZE = analyze_in != "n"
+    if ANALYZE:
+        print("  Key/BPM detection enabled (slower)")
+    else:
+        print("  Key/BPM detection disabled (faster)")
     print()
     input("  Press Enter to continue...")
 
